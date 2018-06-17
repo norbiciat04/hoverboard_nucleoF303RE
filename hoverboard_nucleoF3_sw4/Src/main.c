@@ -42,6 +42,9 @@
 
 /* USER CODE BEGIN Includes */
 
+#include "Uart.h"
+#include "test.h"
+
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -57,6 +60,11 @@ UART_HandleTypeDef huart2;
 
 uint8_t str[50];
 uint16_t size;
+int32_t temp = 0;
+
+extern int32_t zmiennna_test;
+
+//uint8_t Received[10];
 
 /* USER CODE END PV */
 
@@ -73,6 +81,7 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart); //odbieranie komendy o ró¿nej d³ugoœci
 
 /* USER CODE END PFP */
 
@@ -115,6 +124,9 @@ int main(void)
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 
+  //Uart Init
+  HAL_UART_Receive_IT(&huart2, Rx_data, 1);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -126,8 +138,11 @@ int main(void)
 
   /* USER CODE BEGIN 3 */
 
-  	  size = sprintf(str, "kutaczan %d\r\n", 45);
+	  UART_Command_Reading();
+
+  	  size = sprintf(str, "kutaczan %d %d\r\n", 45, zmiennna_test);
   	  HAL_UART_Transmit_IT(&huart2, str, size);
+  	  HAL_Delay(500);
 
   }
   /* USER CODE END 3 */
@@ -371,6 +386,18 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) //odbieranie komendy o ró¿nej d³ugoœci
+{
+	if (huart->Instance == USART2)  //current UART
+	{
+		Uart_Receive();
+		HAL_UART_Receive_IT(&huart2, Rx_data, 1); //activate UART receive interrupt every time
+	}
+}
+
+
 
 /* USER CODE END 4 */
 
