@@ -14,7 +14,7 @@
 char Transfer_cplt, Rx_Buffer[100], Rx_indx, Rx_data[2];
 
 void Uart_receive (void);
-void comand_recognition(char *input_comand);
+void comand_recognition (char *input_comand);
 void UART_Command_Reading (void);
 
 #endif /* UART_H_ */

@@ -60,6 +60,7 @@ UART_HandleTypeDef huart2;
 
 uint8_t str[50];
 uint16_t size;
+
 int32_t temp = 0;
 
 //uint8_t Received[10];

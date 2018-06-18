@@ -8,7 +8,6 @@
 #include "Uart.h"
 #include "BLDC_Motors.h"
 
-
 void Uart_Receive (void) {
 
 	uint8_t i;
@@ -27,13 +26,9 @@ void Uart_Receive (void) {
 
 }
 
-
 void comand_recognition(char *input_comand) {
 	char *cr_array[10];		//maximum command arguments
 	uint8_t cr_counter = 0;		//counter of command arguments
-
-	uint8_t Data[40]; 		// table with message
-	uint16_t size = 0; 		// size of message
 
 	//	split command to array
 	cr_array[cr_counter] = strtok(input_comand, " ,.-");
@@ -75,8 +70,7 @@ void comand_recognition(char *input_comand) {
 		break;
 
 	default:	//garbage
-		size = sprintf(Data, "Blep\n\r");
-	//	HAL_UART_Transmit_IT(&huart2, Data, size);
+
 		break;
 	}
 
