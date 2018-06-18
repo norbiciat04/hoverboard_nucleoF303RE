@@ -43,7 +43,7 @@
 /* USER CODE BEGIN Includes */
 
 #include "Uart.h"
-#include "test.h"
+#include "BLDC_Motors.h"
 
 /* USER CODE END Includes */
 
@@ -61,8 +61,6 @@ UART_HandleTypeDef huart2;
 uint8_t str[50];
 uint16_t size;
 int32_t temp = 0;
-
-extern int32_t zmiennna_test;
 
 //uint8_t Received[10];
 
@@ -127,6 +125,10 @@ int main(void)
   //Uart Init
   HAL_UART_Receive_IT(&huart2, Rx_data, 1);
 
+  //BLDC_Motors init
+  Initialize_LR_Motors(&htim2, TIM_CHANNEL_1, TIM_CHANNEL_2);
+  Stop_LR_Motors();
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -140,7 +142,7 @@ int main(void)
 
 	  UART_Command_Reading();
 
-  	  size = sprintf(str, "kutaczan %d %d\r\n", 45, zmiennna_test);
+  	  size = sprintf(str, "kutaczan %d\r\n", 45);
   	  HAL_UART_Transmit_IT(&huart2, str, size);
   	  HAL_Delay(500);
 

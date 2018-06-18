@@ -6,9 +6,8 @@
  */
 
 #include "Uart.h"
-#include "test.h"
+#include "BLDC_Motors.h"
 
-extern int32_t zmiennna_test;
 
 void Uart_Receive (void) {
 
@@ -30,38 +29,59 @@ void Uart_Receive (void) {
 
 
 void comand_recognition(char *input_comand) {
-	char *cr_array[10];
-	int cr_counter = 0;
+	char *cr_array[10];		//maximum command arguments
+	uint8_t cr_counter = 0;		//counter of command arguments
 
-	uint8_t Data[40]; // Tablica przechowujaca wysylana wiadomosc.
-	uint16_t size = 0; // Rozmiar wysylanej wiadomosci
+	uint8_t Data[40]; 		// table with message
+	uint16_t size = 0; 		// size of message
 
-//	split command to array
+	//	split command to array
 	cr_array[cr_counter] = strtok(input_comand, " ,.-");
 	while (cr_array[cr_counter] != 0) {
 		cr_array[++cr_counter] = strtok(0, " ,.-");
 	}
 
-	if (cr_counter == 1) {
-		if (strcmp(input_comand, "stop") == 0) {
-		size = sprintf(Data, "Stop\n\r");
-	//	HAL_UART_Transmit_IT(&huart2, Data, size);
 
+	switch (cr_counter) {
+
+	case 1:		//command without arguments
+		if (strcmp(input_comand, "MOT_STOP") == 0) {
+			Stop_LR_Motors();
 		}
-	} else if (cr_counter == 2) {
-		if (strcmp(input_comand, "speed") == 0) {
-		size = sprintf(Data, "speed %s\n\r",cr_array[1]);
-	//	HAL_UART_Transmit_IT(&huart2, Data, size);
+		break;
 
-		zmiennna_test = atoi(cr_array[1]);
-
+	case 2:		//one argument command
+		if (strcmp(input_comand, "L_PWM") == 0) {
+			Set_Left_Motor_Speed(atoi(cr_array[1]));
 		}
-	} else {
+		if (strcmp(input_comand, "R_PWM") == 0) {
+			Set_Right_Motor_Speed(atoi(cr_array[1]));
+		}
+		if (strcmp(input_comand, "L_DIR") == 0) {
+			Set_Left_Motor_Dir(atoi(cr_array[1]));
+		}
+		if (strcmp(input_comand, "R_DIR") == 0) {
+			Set_Right_Motor_Dir(atoi(cr_array[1]));
+		}
+		if (strcmp(input_comand, "MOT_DIR") == 0) {
+			Set_LR_Motors_Dir(atoi(cr_array[1]));
+		}
+		break;
+
+	case 3:		//two arguments command
+		if (strcmp(input_comand, "MOT_PWM") == 0) {
+			Set_LR_Motors_Speed(atoi(cr_array[1]), atoi(cr_array[2]));
+		}
+		break;
+
+	default:	//garbage
 		size = sprintf(Data, "Blep\n\r");
 	//	HAL_UART_Transmit_IT(&huart2, Data, size);
+		break;
 	}
 
 }
+
 
 void UART_Command_Reading (void) {
 
