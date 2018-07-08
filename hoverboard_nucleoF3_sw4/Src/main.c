@@ -42,8 +42,11 @@
 
 /* USER CODE BEGIN Includes */
 
+#include <math.h>
 #include "Uart.h"
 #include "BLDC_Motors.h"
+#include "tm_stm32_delay.h"
+#include "mpu6050.h"
 
 /* USER CODE END Includes */
 
@@ -58,11 +61,16 @@ UART_HandleTypeDef huart2;
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
 
+//Uart
 uint8_t str[50];
 uint16_t size;
 
+//TEMPORARY & GARBAGE
 int32_t temp = 0;
-
+int32_t angleXZ = 0;
+float x = 0;
+float y = 0;
+float z = 0;
 //uint8_t Received[10];
 
 /* USER CODE END PV */
@@ -123,12 +131,37 @@ int main(void)
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 
-  //Uart Init
+  //Uart init
   HAL_UART_Receive_IT(&huart2, Rx_data, 1);
 
   //BLDC_Motors init
   Initialize_LR_Motors(&htim2, TIM_CHANNEL_1, TIM_CHANNEL_2);
   Stop_LR_Motors();
+
+  //Accelerometr MPU6050 init
+  TM_MPU6050_t MPU6050_Data0;
+  TM_MPU6050_t MPU6050_Data1;
+
+  uint8_t sensor0 = 0;
+  uint8_t sensor1 = 0;
+
+  char str[120];
+
+  // Initialize MPU6050 sensor 0, address = 0xD0, AD0 pin on sensor is low
+  if (TM_MPU6050_Init(&MPU6050_Data0, TM_MPU6050_Device_0, TM_MPU6050_Accelerometer_8G, TM_MPU6050_Gyroscope_250s) == TM_MPU6050_Result_Ok) {
+		// Display message to user
+		size = sprintf(str, "MPU6050 sensor 0 is ready to use! (AD0:low)\n");
+		HAL_UART_Transmit(&huart2, str, size, 1000);
+		sensor0 = 1;		// Sensor 0 OK
+  }
+
+  // Initialize MPU6050 sensor 1, address = 0xD2, AD0 pin on sensor is high
+  if (TM_MPU6050_Init(&MPU6050_Data1, TM_MPU6050_Device_1, TM_MPU6050_Accelerometer_8G, TM_MPU6050_Gyroscope_250s) == TM_MPU6050_Result_Ok) {
+		// Display message to user
+		size = sprintf(str, "MPU6050 sensor 1 is ready to use! (AD0:high)\n");
+		HAL_UART_Transmit(&huart2, str, size, 1000);
+		sensor1 = 1;		// Sensor 1 OK
+  }
 
   /* USER CODE END 2 */
 
@@ -141,11 +174,58 @@ int main(void)
 
   /* USER CODE BEGIN 3 */
 
+	  //Reading UART command
 	  UART_Command_Reading();
 
-  	  size = sprintf(str, "kutaczan %d\r\n", 45);
-  	  HAL_UART_Transmit_IT(&huart2, str, size);
-  	  HAL_Delay(500);
+	  /*
+	  size = sprintf(str, "kutaczan %d\r\n", 22);
+	  HAL_UART_Transmit_IT(&huart2, str, size);
+	  */
+
+      if (sensor0) {
+           // Read all data from sensor 0
+           TM_MPU6050_ReadAll(&MPU6050_Data0);
+           x = MPU6050_Data0.Accelerometer_X;
+           z = MPU6050_Data0.Accelerometer_Z;
+           angleXZ = atan(x/z)*180/M_PI;
+           // Format data
+           size = sprintf(str, "Sensor0: Angle X-Z:%d      Acc: X:%d   Y:%d   Z:%d         Gyr: X:%d   Y:%d   Z:%d \r\n",
+    		   angleXZ,
+               MPU6050_Data0.Accelerometer_X,
+               MPU6050_Data0.Accelerometer_Y,
+               MPU6050_Data0.Accelerometer_Z,
+               MPU6050_Data0.Gyroscope_X,
+               MPU6050_Data0.Gyroscope_Y,
+               MPU6050_Data0.Gyroscope_Z
+           );
+           HAL_UART_Transmit(&huart2, str, size, 1000);
+      }
+
+
+
+      if (sensor1) {
+           // Read all data from sensor 1
+           TM_MPU6050_ReadAll(&MPU6050_Data1);
+           x = MPU6050_Data1.Accelerometer_X;
+           z = MPU6050_Data1.Accelerometer_Z;
+           angleXZ = atan(x/z)*180/M_PI;
+
+           // Format data
+           size = sprintf(str, "Sensor1: Angle X-Z:%d      Acc: X:%d   Y:%d   Z:%d         Gyr: X:%d   Y:%d   Z:%d \r\n",
+        	   angleXZ,
+               MPU6050_Data1.Accelerometer_X,
+               MPU6050_Data1.Accelerometer_Y,
+               MPU6050_Data1.Accelerometer_Z,
+               MPU6050_Data1.Gyroscope_X,
+               MPU6050_Data1.Gyroscope_Y,
+               MPU6050_Data1.Gyroscope_Z
+           );
+           HAL_UART_Transmit(&huart2, str, size, 1000);
+      }
+
+
+  	  HAL_Delay(100);
+
 
   }
   /* USER CODE END 3 */
@@ -218,7 +298,7 @@ static void MX_I2C1_Init(void)
 {
 
   hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x2000090E;
+  hi2c1.Init.Timing = 0x0000020B;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
