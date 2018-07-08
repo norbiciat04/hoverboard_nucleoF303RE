@@ -15,7 +15,7 @@ void Uart_Receive (void) {
 		for (i = 0; i < 100; i++)
 			Rx_Buffer[i] = 0; //clear Rx_Buffer before receiving new data
 	}
-	if (Rx_data[0] != 13) //if received data different from ascii 13 (enter)
+	if (Rx_data[0] != 10) //if received data different from ascii 10 (enter)
 			{
 		Rx_Buffer[Rx_indx++] = Rx_data[0]; //add data to Rx_Buffer
 	} else      //if received data = 13
@@ -31,40 +31,40 @@ void comand_recognition(char *input_comand) {
 	uint8_t cr_counter = 0;		//counter of command arguments
 
 	//	split command to array
-	cr_array[cr_counter] = strtok(input_comand, " ,.-");
+	cr_array[cr_counter] = strtok(input_comand, " ");	// separating signs
 	while (cr_array[cr_counter] != 0) {
-		cr_array[++cr_counter] = strtok(0, " ,.-");
+		cr_array[++cr_counter] = strtok(0, " ");
 	}
 
 
 	switch (cr_counter) {
 
 	case 1:		//command without arguments
-		if (strcmp(input_comand, "MOT_STOP") == 0) {
+		if (strcmp(cr_array[0], "MOT_STOP") == 0) {
 			Stop_LR_Motors();
 		}
 		break;
 
 	case 2:		//one argument command
-		if (strcmp(input_comand, "L_PWM") == 0) {
+		if (strcmp(cr_array[0], "L_PWM") == 0) {
 			Set_Left_Motor_Speed(atoi(cr_array[1]));
 		}
-		if (strcmp(input_comand, "R_PWM") == 0) {
+		if (strcmp(cr_array[0], "R_PWM") == 0) {
 			Set_Right_Motor_Speed(atoi(cr_array[1]));
 		}
-		if (strcmp(input_comand, "L_DIR") == 0) {
+		if (strcmp(cr_array[0], "L_DIR") == 0) {
 			Set_Left_Motor_Dir(atoi(cr_array[1]));
 		}
-		if (strcmp(input_comand, "R_DIR") == 0) {
+		if (strcmp(cr_array[0], "R_DIR") == 0) {
 			Set_Right_Motor_Dir(atoi(cr_array[1]));
 		}
-		if (strcmp(input_comand, "MOT_DIR") == 0) {
+		if (strcmp(cr_array[0], "MOT_DIR") == 0) {
 			Set_LR_Motors_Dir(atoi(cr_array[1]));
 		}
 		break;
 
 	case 3:		//two arguments command
-		if (strcmp(input_comand, "MOT_PWM") == 0) {
+		if (strcmp(cr_array[0], "MOT_PWM") == 0) {
 			Set_LR_Motors_Speed(atoi(cr_array[1]), atoi(cr_array[2]));
 		}
 		break;
