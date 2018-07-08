@@ -62,12 +62,24 @@ UART_HandleTypeDef huart2;
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
 
-//Uart
+//UART
 uint8_t str[50];
 uint16_t size;
 
+//MPU
+TM_MPU6050_t MPU6050_Data0;
+TM_MPU6050_t MPU6050_Data1;
+uint8_t sensor0 = 0;
+uint8_t sensor1 = 0;
+
+//KALMAN
+float sensor0_kalman_result = 0;
+float sensor1_kalman_result = 0;
+
 //TEMPORARY & GARBAGE
 int32_t temp = 0;
+int32_t lastTick = 0;
+int32_t interval = 0;
 int32_t d_kal_result = 0;	//for Uart
 float angle_result = 0;
 int32_t d_angle_result = 0;	//for Uart
@@ -92,6 +104,68 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 /* Private function prototypes -----------------------------------------------*/
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart); //odbieranie komendy o ró¿nej d³ugoœci
 
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){	//cykliczne pomiary MPU, filtr KALMANa, regulator PID
+
+	// if( HAL_GPIO_ReadPin(BUTTON_START_GPIO_Port, BUTTON_START_Pin) == GPIO_PIN_RESET) {
+
+	if(htim->Instance == TIM6){ // Je¿eli przerwanie pochodzi od timera 6
+		interval = HAL_GetTick()-lastTick;
+		lastTick = HAL_GetTick();
+	    if (sensor0) {
+			TM_MPU6050_ReadAll(&MPU6050_Data0);
+			sensor0_kalman_result = kalman_filter_get_est(&K_MPU6050_0, MPU6050_Data0.Accelerometer_X, MPU6050_Data0.Accelerometer_Z, MPU6050_Data0.Gyroscope_Y);
+			d_kal_result = sensor0_kalman_result;	//for Uart
+
+			angle_result = angle_before_kalman(MPU6050_Data0.Accelerometer_X, MPU6050_Data0.Accelerometer_Z);
+			d_angle_result = angle_result;	//for Uart
+			/*
+			// Format data
+			size = sprintf(str, "Sensor0: Angle:%d   Kalman:%d      Acc: X:%d   Y:%d   Z:%d         Gyr: X:%d   Y:%d   Z:%d Systick %d \r\n",
+			d_angle_result,
+			d_kal_result,
+			MPU6050_Data0.Accelerometer_X,
+			MPU6050_Data0.Accelerometer_Y,
+			MPU6050_Data0.Accelerometer_Z,
+			MPU6050_Data0.Gyroscope_X,
+			MPU6050_Data0.Gyroscope_Y,
+			MPU6050_Data0.Gyroscope_Z,
+			HAL_GetTick()
+			);
+			*/
+			size = sprintf(str, "%d %d      %d %d %d \r\n", d_angle_result, d_kal_result, 100, -100, interval);
+			HAL_UART_Transmit(&huart2, str, size, 1000);
+	    }
+
+	    if (sensor1) {
+			TM_MPU6050_ReadAll(&MPU6050_Data1);
+			sensor1_kalman_result = kalman_filter_get_est(&K_MPU6050_1, MPU6050_Data1.Accelerometer_X, MPU6050_Data1.Accelerometer_Z, MPU6050_Data1.Gyroscope_Y);
+			d_kal_result = sensor1_kalman_result;	//for Uart
+
+			angle_result = angle_before_kalman(MPU6050_Data1.Accelerometer_X, MPU6050_Data1.Accelerometer_Z);
+			d_angle_result = angle_result;	//for Uart
+			/*
+			// Format data
+			size = sprintf(str, "Sensor1: Angle:%d   Kalman:%d      Acc: X:%d   Y:%d   Z:%d         Gyr: X:%d   Y:%d   Z:%d Systick %d \r\n",
+			d_angle_result,
+			d_kal_result,
+			MPU6050_Data1.Accelerometer_X,
+			MPU6050_Data1.Accelerometer_Y,
+			MPU6050_Data1.Accelerometer_Z,
+			MPU6050_Data1.Gyroscope_X,
+			MPU6050_Data1.Gyroscope_Y,
+			MPU6050_Data1.Gyroscope_Z,
+			HAL_GetTick()
+			);
+			*/
+			size = sprintf(str, "%d %d      %d %d %d \r\n", d_angle_result, d_kal_result, 100, -100, interval);
+			HAL_UART_Transmit(&huart2, str, size, 1000);
+	    }
+
+
+
+
+	}
+}
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
@@ -141,14 +215,9 @@ int main(void)
   Stop_LR_Motors();
 
   //==================
+
+
   //Accelerometr MPU6050 init
-  TM_MPU6050_t MPU6050_Data0;
-  TM_MPU6050_t MPU6050_Data1;
-
-  uint8_t sensor0 = 0;
-  uint8_t sensor1 = 0;
-
-  char str[120];
 
   // Initialize MPU6050 sensor 0, address = 0xD0, AD0 pin on sensor is low
   if (TM_MPU6050_Init(&MPU6050_Data0, TM_MPU6050_Device_0, TM_MPU6050_Accelerometer_8G, TM_MPU6050_Gyroscope_250s) == TM_MPU6050_Result_Ok) {
@@ -170,11 +239,13 @@ int main(void)
   //Kalman filter init
   TM_MPU6050_ReadAll(&MPU6050_Data0);
   kalman_filter_init(&K_MPU6050_0, MPU6050_Data0.Accelerometer_X, MPU6050_Data0.Accelerometer_Z);
-  float sensor0_kalman_result = 0;
 
   TM_MPU6050_ReadAll(&MPU6050_Data1);
   kalman_filter_init(&K_MPU6050_1, MPU6050_Data1.Accelerometer_X, MPU6050_Data1.Accelerometer_Z);
-  float sensor1_kalman_result = 0;
+
+
+  //Init cyclic timer (MPU, KALMAN, PID) - after Kalman init!
+  HAL_TIM_Base_Start_IT(&htim6);
 
 
 
@@ -197,6 +268,7 @@ int main(void)
 	  HAL_UART_Transmit_IT(&huart2, str, size);
 	  */
 
+	  /*
       if (sensor0) {
            // Read all data from sensor 0
            TM_MPU6050_ReadAll(&MPU6050_Data0);
@@ -253,7 +325,7 @@ int main(void)
 
 
   	  HAL_Delay(5);
-
+*/
 
   }
   /* USER CODE END 3 */
@@ -405,7 +477,7 @@ static void MX_TIM6_Init(void)
   TIM_MasterConfigTypeDef sMasterConfig;
 
   htim6.Instance = TIM6;
-  htim6.Init.Prescaler = 36000;
+  htim6.Init.Prescaler = 36000-1;
   htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim6.Init.Period = 5-1;
   htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
