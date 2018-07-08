@@ -42,6 +42,7 @@
 
 /* USER CODE BEGIN Includes */
 
+#include <math.h>
 #include "Uart.h"
 #include "BLDC_Motors.h"
 #include "tm_stm32_delay.h"
@@ -66,7 +67,10 @@ uint16_t size;
 
 //TEMPORARY & GARBAGE
 int32_t temp = 0;
-
+int32_t angleXZ = 0;
+float x = 0;
+float y = 0;
+float z = 0;
 //uint8_t Received[10];
 
 /* USER CODE END PV */
@@ -147,7 +151,7 @@ int main(void)
   if (TM_MPU6050_Init(&MPU6050_Data0, TM_MPU6050_Device_0, TM_MPU6050_Accelerometer_8G, TM_MPU6050_Gyroscope_250s) == TM_MPU6050_Result_Ok) {
 		// Display message to user
 		size = sprintf(str, "MPU6050 sensor 0 is ready to use! (AD0:low)\n");
-		HAL_UART_Transmit_IT(&huart2, str, size);
+		HAL_UART_Transmit(&huart2, str, size, 1000);
 		sensor0 = 1;		// Sensor 0 OK
   }
 
@@ -155,7 +159,7 @@ int main(void)
   if (TM_MPU6050_Init(&MPU6050_Data1, TM_MPU6050_Device_1, TM_MPU6050_Accelerometer_8G, TM_MPU6050_Gyroscope_250s) == TM_MPU6050_Result_Ok) {
 		// Display message to user
 		size = sprintf(str, "MPU6050 sensor 1 is ready to use! (AD0:high)\n");
-		HAL_UART_Transmit_IT(&huart2, str, size);
+		HAL_UART_Transmit(&huart2, str, size, 1000);
 		sensor1 = 1;		// Sensor 1 OK
   }
 
@@ -181,9 +185,12 @@ int main(void)
       if (sensor0) {
            // Read all data from sensor 0
            TM_MPU6050_ReadAll(&MPU6050_Data0);
-
+           x = MPU6050_Data0.Accelerometer_X;
+           z = MPU6050_Data0.Accelerometer_Z;
+           angleXZ = atan(x/z)*180/M_PI;
            // Format data
-           size = sprintf(str, "Sensor0 Acc: X:%d   Y:%d   Z:%d         Gyr: X:%d   Y:%d   Z:%d \r\n",
+           size = sprintf(str, "Sensor0: Angle X-Z:%d      Acc: X:%d   Y:%d   Z:%d         Gyr: X:%d   Y:%d   Z:%d \r\n",
+    		   angleXZ,
                MPU6050_Data0.Accelerometer_X,
                MPU6050_Data0.Accelerometer_Y,
                MPU6050_Data0.Accelerometer_Z,
@@ -191,16 +198,21 @@ int main(void)
                MPU6050_Data0.Gyroscope_Y,
                MPU6050_Data0.Gyroscope_Z
            );
-       	  HAL_UART_Transmit_IT(&huart2, str, size);
+           HAL_UART_Transmit(&huart2, str, size, 1000);
       }
-  	  HAL_Delay(100);
+
+
 
       if (sensor1) {
            // Read all data from sensor 1
            TM_MPU6050_ReadAll(&MPU6050_Data1);
+           x = MPU6050_Data1.Accelerometer_X;
+           z = MPU6050_Data1.Accelerometer_Z;
+           angleXZ = atan(x/z)*180/M_PI;
 
            // Format data
-           size = sprintf(str, "Sensor1 Acc: X:%d   Y:%d   Z:%d         Gyr: X:%d   Y:%d   Z:%d \r\n",
+           size = sprintf(str, "Sensor1: Angle X-Z:%d      Acc: X:%d   Y:%d   Z:%d         Gyr: X:%d   Y:%d   Z:%d \r\n",
+        	   angleXZ,
                MPU6050_Data1.Accelerometer_X,
                MPU6050_Data1.Accelerometer_Y,
                MPU6050_Data1.Accelerometer_Z,
@@ -208,8 +220,10 @@ int main(void)
                MPU6050_Data1.Gyroscope_Y,
                MPU6050_Data1.Gyroscope_Z
            );
-       	  HAL_UART_Transmit_IT(&huart2, str, size);
+           HAL_UART_Transmit(&huart2, str, size, 1000);
       }
+
+
   	  HAL_Delay(100);
 
 
