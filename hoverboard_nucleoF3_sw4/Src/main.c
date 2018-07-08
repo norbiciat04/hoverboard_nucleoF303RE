@@ -47,6 +47,7 @@
 #include "BLDC_Motors.h"
 #include "tm_stm32_delay.h"
 #include "mpu6050.h"
+#include "kalman_filter.h"
 
 /* USER CODE END Includes */
 
@@ -67,10 +68,11 @@ uint16_t size;
 
 //TEMPORARY & GARBAGE
 int32_t temp = 0;
-int32_t angleXZ = 0;
-float x = 0;
-float y = 0;
-float z = 0;
+int32_t d_kal_result = 0;	//for Uart
+float angle_result = 0;
+int32_t d_angle_result = 0;	//for Uart
+
+
 //uint8_t Received[10];
 
 /* USER CODE END PV */
@@ -138,6 +140,7 @@ int main(void)
   Initialize_LR_Motors(&htim2, TIM_CHANNEL_1, TIM_CHANNEL_2);
   Stop_LR_Motors();
 
+  //==================
   //Accelerometr MPU6050 init
   TM_MPU6050_t MPU6050_Data0;
   TM_MPU6050_t MPU6050_Data1;
@@ -162,6 +165,18 @@ int main(void)
 		HAL_UART_Transmit(&huart2, str, size, 1000);
 		sensor1 = 1;		// Sensor 1 OK
   }
+  //==================
+
+  //Kalman filter init
+  TM_MPU6050_ReadAll(&MPU6050_Data0);
+  kalman_filter_init(&K_MPU6050_0, MPU6050_Data0.Accelerometer_X, MPU6050_Data0.Accelerometer_Z);
+  float sensor0_kalman_result = 0;
+
+  TM_MPU6050_ReadAll(&MPU6050_Data1);
+  kalman_filter_init(&K_MPU6050_1, MPU6050_Data1.Accelerometer_X, MPU6050_Data1.Accelerometer_Z);
+  float sensor1_kalman_result = 0;
+
+
 
   /* USER CODE END 2 */
 
@@ -185,12 +200,16 @@ int main(void)
       if (sensor0) {
            // Read all data from sensor 0
            TM_MPU6050_ReadAll(&MPU6050_Data0);
-           x = MPU6050_Data0.Accelerometer_X;
-           z = MPU6050_Data0.Accelerometer_Z;
-           angleXZ = atan(x/z)*180/M_PI;
+           sensor0_kalman_result = kalman_filter_get_est(&K_MPU6050_0, MPU6050_Data0.Accelerometer_X, MPU6050_Data0.Accelerometer_Z, MPU6050_Data0.Gyroscope_Y);
+ 	  	   d_kal_result = sensor0_kalman_result;	//for Uart
+
+ 		   angle_result = angle_before_kalman(MPU6050_Data0.Accelerometer_X, MPU6050_Data0.Accelerometer_Z);
+ 		   d_angle_result = angle_result;	//for Uart
+
            // Format data
-           size = sprintf(str, "Sensor0: Angle X-Z:%d      Acc: X:%d   Y:%d   Z:%d         Gyr: X:%d   Y:%d   Z:%d \r\n",
-    		   angleXZ,
+           size = sprintf(str, "Sensor0: Angle:%d   Kalman:%d      Acc: X:%d   Y:%d   Z:%d         Gyr: X:%d   Y:%d   Z:%d \r\n",
+        	   d_angle_result,
+			   d_kal_result,
                MPU6050_Data0.Accelerometer_X,
                MPU6050_Data0.Accelerometer_Y,
                MPU6050_Data0.Accelerometer_Z,
@@ -198,6 +217,8 @@ int main(void)
                MPU6050_Data0.Gyroscope_Y,
                MPU6050_Data0.Gyroscope_Z
            );
+
+       //    size = sprintf(str, "%d %d      %d %d \r\n", d_angle_result, d_kal_result, 100, -100);
            HAL_UART_Transmit(&huart2, str, size, 1000);
       }
 
@@ -206,13 +227,17 @@ int main(void)
       if (sensor1) {
            // Read all data from sensor 1
            TM_MPU6050_ReadAll(&MPU6050_Data1);
-           x = MPU6050_Data1.Accelerometer_X;
-           z = MPU6050_Data1.Accelerometer_Z;
-           angleXZ = atan(x/z)*180/M_PI;
+           sensor1_kalman_result = kalman_filter_get_est(&K_MPU6050_1, MPU6050_Data1.Accelerometer_X, MPU6050_Data1.Accelerometer_Z, MPU6050_Data1.Gyroscope_Y);
+ 	  	   d_kal_result = sensor1_kalman_result;	//for Uart
+
+ 		   angle_result = angle_before_kalman(MPU6050_Data1.Accelerometer_X, MPU6050_Data1.Accelerometer_Z);
+ 		   d_angle_result = angle_result;	//for Uart
 
            // Format data
-           size = sprintf(str, "Sensor1: Angle X-Z:%d      Acc: X:%d   Y:%d   Z:%d         Gyr: X:%d   Y:%d   Z:%d \r\n",
-        	   angleXZ,
+
+           size = sprintf(str, "Sensor1: Angle:%d   Kalman:%d      Acc: X:%d   Y:%d   Z:%d         Gyr: X:%d   Y:%d   Z:%d \r\n",
+               d_angle_result,
+    	       d_kal_result,
                MPU6050_Data1.Accelerometer_X,
                MPU6050_Data1.Accelerometer_Y,
                MPU6050_Data1.Accelerometer_Z,
@@ -220,11 +245,14 @@ int main(void)
                MPU6050_Data1.Gyroscope_Y,
                MPU6050_Data1.Gyroscope_Z
            );
+
+          //     size = sprintf(str, "%d %d      %d %d \r\n", d_angle_result, d_kal_result, 100, -100);
+
            HAL_UART_Transmit(&huart2, str, size, 1000);
       }
 
 
-  	  HAL_Delay(100);
+  	  HAL_Delay(5);
 
 
   }
