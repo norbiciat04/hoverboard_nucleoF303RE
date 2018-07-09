@@ -2,15 +2,16 @@
 
 #include "matrix.h"
 #include <math.h>
+//#include <stdint.h>
 
 #define MPU6050_GYRO_SENS 250
 #define MPU6050_ACCE_SENS 8
 
 
+float dev_v = 3;
+float dev_w = 1;
 
 static float dt = 0.005;			//depend on timer interrupt time
-
-
 
 
 void kalman_filter_init(struct KALMAN_OBJ* sensor, float acc_1, float acc_2)
@@ -30,8 +31,8 @@ void kalman_filter_init(struct KALMAN_OBJ* sensor, float acc_1, float acc_2)
 	sensor->C[0] = 1;
 	sensor->C[1] = 0;
 
-	sensor->std_dev_v = 3;
-	sensor->std_dev_w = 1;
+	sensor->std_dev_v = dev_v;
+	sensor->std_dev_w = dev_w;
 
 	sensor->V[0] = sensor->std_dev_v*sensor->std_dev_v*dt;
 	sensor->V[1] = 0;
