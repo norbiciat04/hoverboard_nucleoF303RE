@@ -48,6 +48,7 @@
 #include "tm_stm32_delay.h"
 #include "mpu6050.h"
 #include "kalman_filter.h"
+#include "PID_regulator.h"
 
 /* USER CODE END Includes */
 
@@ -75,14 +76,19 @@ uint8_t sensor1 = 0;
 //KALMAN
 float sensor0_kalman_result = 0;
 float sensor1_kalman_result = 0;
+int32_t d_kal_result = 0;	//for Uart
+float angle_result = 0;
+int32_t d_angle_result = 0;	//for Uart
+
+//PID
+float pid0_result = 0;
+float pid1_result = 0;
+int32_t d_pid_result = 0;	//for Uart
 
 //TEMPORARY & GARBAGE
 int32_t temp = 0;
 int32_t lastTick = 0;
 int32_t interval = 0;
-int32_t d_kal_result = 0;	//for Uart
-float angle_result = 0;
-int32_t d_angle_result = 0;	//for Uart
 
 
 //uint8_t Received[10];
@@ -118,11 +124,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){	//cykliczne pomiary
 
 			angle_result = angle_before_kalman(MPU6050_Data0.Accelerometer_X, MPU6050_Data0.Accelerometer_Z);
 			d_angle_result = angle_result;	//for Uart
+
+			pid0_result = PID_calculate(0,sensor0_kalman_result);
+			d_pid_result = pid0_result;	//for Uart
 			/*
 			// Format data
-			size = sprintf(str, "Sensor0: Angle:%d   Kalman:%d      Acc: X:%d   Y:%d   Z:%d         Gyr: X:%d   Y:%d   Z:%d Systick %d \r\n",
+			size = sprintf(str, "Sensor0: Angle:%d   Kalman:%d   PID:%d   Acc: X:%d   Y:%d   Z:%d         Gyr: X:%d   Y:%d   Z:%d Systick %d \r\n",
 			d_angle_result,
 			d_kal_result,
+			d_pid_result,
 			MPU6050_Data0.Accelerometer_X,
 			MPU6050_Data0.Accelerometer_Y,
 			MPU6050_Data0.Accelerometer_Z,
@@ -132,7 +142,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){	//cykliczne pomiary
 			HAL_GetTick()
 			);
 			*/
-			size = sprintf(str, "%d %d      %d %d %d \r\n", d_angle_result, d_kal_result, 100, -100, interval);
+			size = sprintf(str, "%d   %d %d      %d %d %d \r\n", d_pid_result, d_angle_result, d_kal_result, 100, -100, interval);
 			HAL_UART_Transmit(&huart2, str, size, 1000);
 	    }
 
@@ -143,11 +153,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){	//cykliczne pomiary
 
 			angle_result = angle_before_kalman(MPU6050_Data1.Accelerometer_X, MPU6050_Data1.Accelerometer_Z);
 			d_angle_result = angle_result;	//for Uart
+
+			pid1_result = PID_calculate(0,sensor1_kalman_result);
+			d_pid_result = pid1_result;	//for Uart
 			/*
 			// Format data
-			size = sprintf(str, "Sensor1: Angle:%d   Kalman:%d      Acc: X:%d   Y:%d   Z:%d         Gyr: X:%d   Y:%d   Z:%d Systick %d \r\n",
+			size = sprintf(str, "Sensor1: Angle:%d   Kalman:%d   PID:%d   Acc: X:%d   Y:%d   Z:%d         Gyr: X:%d   Y:%d   Z:%d Systick %d \r\n",
 			d_angle_result,
 			d_kal_result,
+			d_pid_result,
 			MPU6050_Data1.Accelerometer_X,
 			MPU6050_Data1.Accelerometer_Y,
 			MPU6050_Data1.Accelerometer_Z,
@@ -157,7 +171,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){	//cykliczne pomiary
 			HAL_GetTick()
 			);
 			*/
-			size = sprintf(str, "%d %d      %d %d %d \r\n", d_angle_result, d_kal_result, 100, -100, interval);
+			size = sprintf(str, "%d   %d %d      %d %d %d \r\n", d_pid_result, d_angle_result, d_kal_result, 100, -100, interval);
 			HAL_UART_Transmit(&huart2, str, size, 1000);
 	    }
 
