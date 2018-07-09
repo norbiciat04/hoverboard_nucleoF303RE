@@ -43,11 +43,13 @@
 /* USER CODE BEGIN Includes */
 
 #include <math.h>
+#include <stdlib.h>
 #include "Uart.h"
 #include "BLDC_Motors.h"
 #include "tm_stm32_delay.h"
 #include "mpu6050.h"
 #include "kalman_filter.h"
+#include "PID_regulator.h"
 
 /* USER CODE END Includes */
 
@@ -63,8 +65,8 @@ UART_HandleTypeDef huart2;
 /* Private variables ---------------------------------------------------------*/
 
 //UART
-uint8_t str[50];
-uint16_t size;
+extern uint8_t str[50];
+extern uint16_t size;
 
 //MPU
 TM_MPU6050_t MPU6050_Data0;
@@ -75,14 +77,20 @@ uint8_t sensor1 = 0;
 //KALMAN
 float sensor0_kalman_result = 0;
 float sensor1_kalman_result = 0;
+int32_t d_kal_result = 0;	//for Uart
+float angle_result = 0;
+int32_t d_angle_result = 0;	//for Uart
+
+//PID
+float pid0_result = 0;
+float pid1_result = 0;
+int32_t d_pid_result = 0;	//for Uart
 
 //TEMPORARY & GARBAGE
 int32_t temp = 0;
 int32_t lastTick = 0;
 int32_t interval = 0;
-int32_t d_kal_result = 0;	//for Uart
-float angle_result = 0;
-int32_t d_angle_result = 0;	//for Uart
+uint8_t allow = 0;
 
 
 //uint8_t Received[10];
@@ -109,58 +117,70 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){	//cykliczne pomiary
 	// if( HAL_GPIO_ReadPin(BUTTON_START_GPIO_Port, BUTTON_START_Pin) == GPIO_PIN_RESET) {
 
 	if(htim->Instance == TIM6){ // Je¿eli przerwanie pochodzi od timera 6
-		interval = HAL_GetTick()-lastTick;
-		lastTick = HAL_GetTick();
-	    if (sensor0) {
-			TM_MPU6050_ReadAll(&MPU6050_Data0);
-			sensor0_kalman_result = kalman_filter_get_est(&K_MPU6050_0, MPU6050_Data0.Accelerometer_X, MPU6050_Data0.Accelerometer_Z, MPU6050_Data0.Gyroscope_Y);
-			d_kal_result = sensor0_kalman_result;	//for Uart
 
-			angle_result = angle_before_kalman(MPU6050_Data0.Accelerometer_X, MPU6050_Data0.Accelerometer_Z);
-			d_angle_result = angle_result;	//for Uart
-			/*
-			// Format data
-			size = sprintf(str, "Sensor0: Angle:%d   Kalman:%d      Acc: X:%d   Y:%d   Z:%d         Gyr: X:%d   Y:%d   Z:%d Systick %d \r\n",
-			d_angle_result,
-			d_kal_result,
-			MPU6050_Data0.Accelerometer_X,
-			MPU6050_Data0.Accelerometer_Y,
-			MPU6050_Data0.Accelerometer_Z,
-			MPU6050_Data0.Gyroscope_X,
-			MPU6050_Data0.Gyroscope_Y,
-			MPU6050_Data0.Gyroscope_Z,
-			HAL_GetTick()
-			);
-			*/
-			size = sprintf(str, "%d %d      %d %d %d \r\n", d_angle_result, d_kal_result, 100, -100, interval);
-			HAL_UART_Transmit(&huart2, str, size, 1000);
-	    }
+		  //Reading UART command
+		  UART_Command_Reading();
+		if(allow) {
+			interval = HAL_GetTick()-lastTick;
+			lastTick = HAL_GetTick();
+			if (sensor0) {
+				TM_MPU6050_ReadAll(&MPU6050_Data0);
+				sensor0_kalman_result = kalman_filter_get_est(&K_MPU6050_0, MPU6050_Data0.Accelerometer_X, MPU6050_Data0.Accelerometer_Z, MPU6050_Data0.Gyroscope_Y);
+				d_kal_result = sensor0_kalman_result;	//for Uart
 
-	    if (sensor1) {
-			TM_MPU6050_ReadAll(&MPU6050_Data1);
-			sensor1_kalman_result = kalman_filter_get_est(&K_MPU6050_1, MPU6050_Data1.Accelerometer_X, MPU6050_Data1.Accelerometer_Z, MPU6050_Data1.Gyroscope_Y);
-			d_kal_result = sensor1_kalman_result;	//for Uart
+				angle_result = angle_before_kalman(MPU6050_Data0.Accelerometer_X, MPU6050_Data0.Accelerometer_Z);
+				d_angle_result = angle_result;	//for Uart
 
-			angle_result = angle_before_kalman(MPU6050_Data1.Accelerometer_X, MPU6050_Data1.Accelerometer_Z);
-			d_angle_result = angle_result;	//for Uart
-			/*
-			// Format data
-			size = sprintf(str, "Sensor1: Angle:%d   Kalman:%d      Acc: X:%d   Y:%d   Z:%d         Gyr: X:%d   Y:%d   Z:%d Systick %d \r\n",
-			d_angle_result,
-			d_kal_result,
-			MPU6050_Data1.Accelerometer_X,
-			MPU6050_Data1.Accelerometer_Y,
-			MPU6050_Data1.Accelerometer_Z,
-			MPU6050_Data1.Gyroscope_X,
-			MPU6050_Data1.Gyroscope_Y,
-			MPU6050_Data1.Gyroscope_Z,
-			HAL_GetTick()
-			);
-			*/
-			size = sprintf(str, "%d %d      %d %d %d \r\n", d_angle_result, d_kal_result, 100, -100, interval);
-			HAL_UART_Transmit(&huart2, str, size, 1000);
-	    }
+				pid0_result = PID_calculate(0,sensor0_kalman_result);
+				d_pid_result = pid0_result;	//for Uart
+				/*
+				// Format data
+				size = sprintf(str, "Sensor0: Angle:%d   Kalman:%d   PID:%d   Acc: X:%d   Y:%d   Z:%d         Gyr: X:%d   Y:%d   Z:%d Systick %d \r\n",
+				d_angle_result,
+				d_kal_result,
+				d_pid_result,
+				MPU6050_Data0.Accelerometer_X,
+				MPU6050_Data0.Accelerometer_Y,
+				MPU6050_Data0.Accelerometer_Z,
+				MPU6050_Data0.Gyroscope_X,
+				MPU6050_Data0.Gyroscope_Y,
+				MPU6050_Data0.Gyroscope_Z,
+				HAL_GetTick()
+				);
+				*/
+				size = sprintf(str, "%d   %d %d      %d %d %d \r\n", d_pid_result, d_angle_result, d_kal_result, 100, -100, interval);
+				HAL_UART_Transmit_IT(&huart2, str, size);
+			}
 
+			if (sensor1) {
+				TM_MPU6050_ReadAll(&MPU6050_Data1);
+				sensor1_kalman_result = kalman_filter_get_est(&K_MPU6050_1, MPU6050_Data1.Accelerometer_X, MPU6050_Data1.Accelerometer_Z, MPU6050_Data1.Gyroscope_Y);
+				d_kal_result = sensor1_kalman_result;	//for Uart
+
+				angle_result = angle_before_kalman(MPU6050_Data1.Accelerometer_X, MPU6050_Data1.Accelerometer_Z);
+				d_angle_result = angle_result;	//for Uart
+
+				pid1_result = PID_calculate(0,sensor1_kalman_result);
+				d_pid_result = pid1_result;	//for Uart
+				/*
+				// Format data
+				size = sprintf(str, "Sensor1: Angle:%d   Kalman:%d   PID:%d   Acc: X:%d   Y:%d   Z:%d         Gyr: X:%d   Y:%d   Z:%d Systick %d \r\n",
+				d_angle_result,
+				d_kal_result,
+				d_pid_result,
+				MPU6050_Data1.Accelerometer_X,
+				MPU6050_Data1.Accelerometer_Y,
+				MPU6050_Data1.Accelerometer_Z,
+				MPU6050_Data1.Gyroscope_X,
+				MPU6050_Data1.Gyroscope_Y,
+				MPU6050_Data1.Gyroscope_Z,
+				HAL_GetTick()
+				);
+				*/
+				size = sprintf(str, "%d   %d %d      %d %d %d \r\n", d_pid_result, d_angle_result, d_kal_result, 100, -100, interval);
+				HAL_UART_Transmit_IT(&huart2, str, size);
+			}
+		}
 
 
 
@@ -261,8 +281,6 @@ int main(void)
 
   /* USER CODE BEGIN 3 */
 
-	  //Reading UART command
-	  UART_Command_Reading();
 
 	  /*
 	  size = sprintf(str, "kutaczan %d\r\n", 22);
