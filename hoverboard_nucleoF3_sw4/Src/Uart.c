@@ -83,18 +83,48 @@ void comand_recognition(char *input_comand) {
 		}
 		if (strcmp(cr_array[0], "L_DIR") == 0) {
 			Set_Left_Motor_Dir(atoi(cr_array[1]));
-			size = sprintf(str, "Left motor dir=%d\r\n", atoi(cr_array[1]));
-			HAL_UART_Transmit(&huart2, str, size, 1000);
+			if(atoi(cr_array[1])==0) {
+				size = sprintf(str, "Left motor dir BACKWARD\r\n");
+				HAL_UART_Transmit(&huart2, str, size, 1000);
+			} else if(atoi(cr_array[1])==1) {
+				size = sprintf(str, "Left motor dir FORWARD\r\n");
+				HAL_UART_Transmit(&huart2, str, size, 1000);
+			} else {
+				size = sprintf(str, "Left motor dir incorrect, only 0-1.\r\n");
+				HAL_UART_Transmit(&huart2, str, size, 1000);
+			}
 		}
 		if (strcmp(cr_array[0], "R_DIR") == 0) {
 			Set_Right_Motor_Dir(atoi(cr_array[1]));
-			size = sprintf(str, "Right motor dir=%d\r\n", atoi(cr_array[1]));
-			HAL_UART_Transmit(&huart2, str, size, 1000);
+			if(atoi(cr_array[1])==0) {
+				size = sprintf(str, "Right motor dir BACKWARD\r\n");
+				HAL_UART_Transmit(&huart2, str, size, 1000);
+			} else if(atoi(cr_array[1])==1) {
+				size = sprintf(str, "Right motor dir FORWARD\r\n");
+				HAL_UART_Transmit(&huart2, str, size, 1000);
+			} else {
+				size = sprintf(str, "Right motor dir incorrect, only 0-1.\r\n");
+				HAL_UART_Transmit(&huart2, str, size, 1000);
+			}
 		}
 		if (strcmp(cr_array[0], "MOT_DIR") == 0) {
 			Set_LR_Motors_Dir(atoi(cr_array[1]));
-			size = sprintf(str, "Motors dir=%d\r\n", atoi(cr_array[1]));
-			HAL_UART_Transmit(&huart2, str, size, 1000);
+			if(atoi(cr_array[1])==0) {
+				size = sprintf(str, "Motors dir BACKWARD\r\n");
+				HAL_UART_Transmit(&huart2, str, size, 1000);
+			} else if(atoi(cr_array[1])==1) {
+				size = sprintf(str, "Motors dir FORWARD\r\n");
+				HAL_UART_Transmit(&huart2, str, size, 1000);
+			} else if(atoi(cr_array[1])==2) {
+				size = sprintf(str, "Motors dir LEFT\r\n");
+				HAL_UART_Transmit(&huart2, str, size, 1000);
+			} else if(atoi(cr_array[1])==3) {
+				size = sprintf(str, "Motors dir RIGHT\r\n");
+				HAL_UART_Transmit(&huart2, str, size, 1000);
+			} else {
+				size = sprintf(str, "Motors dir incorrect, only 0-3.\r\n");
+				HAL_UART_Transmit(&huart2, str, size, 1000);
+			}
 		}
 		if (strcmp(cr_array[0], "P") == 0) {
 			Kp=atof(cr_array[1]);
