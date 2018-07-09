@@ -236,6 +236,7 @@ int main(void)
   }
   //==================
 
+  HAL_Delay(200);
   //Kalman filter init
   TM_MPU6050_ReadAll(&MPU6050_Data0);
   kalman_filter_init(&K_MPU6050_0, MPU6050_Data0.Accelerometer_X, MPU6050_Data0.Accelerometer_Z);
