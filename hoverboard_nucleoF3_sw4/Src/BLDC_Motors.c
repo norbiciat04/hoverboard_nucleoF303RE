@@ -24,11 +24,12 @@ enum directions {
 	RIGHT
 };
 
-
-//TODO, zrobic enum
-#define LEFT_MOTOR	1
-#define RIGHT_MOTOR	2
-#define BOTH_MOTORS	3
+enum motors_conf {
+	NONE_MOTOR = 0,
+	LEFT_MOTOR,
+	RIGHT_MOTOR,
+	BOTH_MOTORS
+};
 
 #define MOTOR_MIN_PWM		350
 
