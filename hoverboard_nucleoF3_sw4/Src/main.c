@@ -78,20 +78,24 @@ uint8_t sensor1 = 0;
 //KALMAN
 float sensor0_kalman_result = 0;
 float sensor1_kalman_result = 0;
-int32_t d_kal_result = 0;	//for Uart
-float angle_result = 0;
-int32_t d_angle_result = 0;	//for Uart
+int32_t d0_kal_result = 0;	//for Uart
+int32_t d1_kal_result = 0;	//for Uart
+float angle0_result = 0;
+float angle1_result = 0;
+int32_t d0_angle_result = 0;	//for Uart
+int32_t d1_angle_result = 0;	//for Uart
 
 //PID
 float pid0_result = 0;
 float pid1_result = 0;
-int32_t d_pid_result = 0;	//for Uart
+int32_t d0_pid_result = 0;	//for Uart
+int32_t d1_pid_result = 0;	//for Uart
 
 //TEMPORARY & GARBAGE
 int32_t temp = 0;
 int32_t lastTick = 0;
 int32_t interval = 0;
-uint8_t allow = 0;
+uint8_t allow = 1;
 
 
 //uint8_t Received[10];
@@ -116,25 +120,43 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart); //odbieranie komendy o 
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){	//cykliczne pomiary MPU, filtr KALMANa, regulator PID
 
-	// if( HAL_GPIO_ReadPin(BUTTON_START_GPIO_Port, BUTTON_START_Pin) == GPIO_PIN_RESET) {
+ //if( HAL_GPIO_ReadPin(BUTTON_START_GPIO_Port, BUTTON_START_Pin) == GPIO_PIN_RESET) {
 
 	if(htim->Instance == TIM6){ // Je¿eli przerwanie pochodzi od timera 6
 
 		  //Reading UART command
 		  UART_Command_Reading();
 		if(allow) {
+
 			interval = HAL_GetTick()-lastTick;
 			lastTick = HAL_GetTick();
-			if (sensor0) {
-				TM_MPU6050_ReadAll(&MPU6050_Data0);
-				sensor0_kalman_result = kalman_filter_get_est(&K_MPU6050_0, MPU6050_Data0.Accelerometer_X, MPU6050_Data0.Accelerometer_Z, MPU6050_Data0.Gyroscope_Y);
-				d_kal_result = sensor0_kalman_result;	//for Uart
 
-				angle_result = angle_before_kalman(MPU6050_Data0.Accelerometer_X, MPU6050_Data0.Accelerometer_Z);
-				d_angle_result = angle_result;	//for Uart
+
+				TM_MPU6050_ReadAll(&MPU6050_Data0);	//RIGHT
+				sensor0_kalman_result = kalman_filter_get_est(&K_MPU6050_0, MPU6050_Data0.Accelerometer_Y, MPU6050_Data0.Accelerometer_Z, MPU6050_Data0.Gyroscope_X);
+
+				TM_MPU6050_ReadAll(&MPU6050_Data1);	//LEFT
+				sensor1_kalman_result = -kalman_filter_get_est(&K_MPU6050_1, MPU6050_Data1.Accelerometer_Y, MPU6050_Data1.Accelerometer_Z, MPU6050_Data1.Gyroscope_X);
+
+				d0_kal_result = sensor0_kalman_result;	//for Uart
+				d1_kal_result = sensor1_kalman_result;	//for Uart
+
+				angle0_result = angle_before_kalman(MPU6050_Data0.Accelerometer_Y, MPU6050_Data0.Accelerometer_Z);
+				d0_angle_result = angle0_result;	//for Uart
+				angle1_result = -angle_before_kalman(MPU6050_Data1.Accelerometer_Y, MPU6050_Data1.Accelerometer_Z);
+				d1_angle_result = angle1_result;	//for Uart
+
 
 				pid0_result = PID_calculate(0,sensor0_kalman_result);
-				d_pid_result = pid0_result;	//for Uart
+				d0_pid_result = pid0_result;	//for Uart
+				pid1_result = PID_calculate(0,sensor1_kalman_result);
+				d1_pid_result = pid1_result;	//for Uart
+
+
+				size = sprintf(str, "%d %d %d      %d %d %d    %d %d\r\n", d0_pid_result, d0_angle_result, d0_kal_result, d1_pid_result, d1_angle_result, d1_kal_result, 100, -100);
+				HAL_UART_Transmit_IT(&huart2, str, size);
+
+
 				/*
 				// Format data
 				size = sprintf(str, "Sensor0: Angle:%d   Kalman:%d   PID:%d   Acc: X:%d   Y:%d   Z:%d         Gyr: X:%d   Y:%d   Z:%d Systick %d \r\n",
@@ -150,20 +172,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){	//cykliczne pomiary
 				HAL_GetTick()
 				);
 				*/
-				size = sprintf(str, "%d   %d %d      %d %d %d \r\n", d_pid_result, d_angle_result, d_kal_result, 100, -100, interval);
+				/*
+				size = sprintf(str, "%d  %d   %d %d      %d %d %d \r\n", sensor0, d_pid_result, d_angle_result, d_kal_result, 100, -100, interval);
 				HAL_UART_Transmit_IT(&huart2, str, size);
-			}
+				*/
 
-			if (sensor1) {
-				TM_MPU6050_ReadAll(&MPU6050_Data1);
-				sensor1_kalman_result = kalman_filter_get_est(&K_MPU6050_1, MPU6050_Data1.Accelerometer_X, MPU6050_Data1.Accelerometer_Z, MPU6050_Data1.Gyroscope_Y);
-				d_kal_result = sensor1_kalman_result;	//for Uart
 
-				angle_result = angle_before_kalman(MPU6050_Data1.Accelerometer_X, MPU6050_Data1.Accelerometer_Z);
-				d_angle_result = angle_result;	//for Uart
+				//-------------
 
-				pid1_result = PID_calculate(0,sensor1_kalman_result);
-				d_pid_result = pid1_result;	//for Uart
+
+
 				/*
 				// Format data
 				size = sprintf(str, "Sensor1: Angle:%d   Kalman:%d   PID:%d   Acc: X:%d   Y:%d   Z:%d         Gyr: X:%d   Y:%d   Z:%d Systick %d \r\n",
@@ -179,14 +197,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){	//cykliczne pomiary
 				HAL_GetTick()
 				);
 				*/
-				size = sprintf(str, "%d   %d %d      %d %d %d \r\n", d_pid_result, d_angle_result, d_kal_result, 100, -100, interval);
+				/*
+				size = sprintf(str, "%d  %d   %d %d      %d %d %d \r\n", sensor1, d_pid_result, d_angle_result, d_kal_result, 100, -100, interval);
 				HAL_UART_Transmit_IT(&huart2, str, size);
-			}
+				*/
+
 		}
 
-
-
 	}
+
+ //}
 }
 /* USER CODE END PFP */
 
@@ -247,7 +267,7 @@ int main(void)
 		// Display message to user
 		size = sprintf(str, "MPU6050 sensor 0 is ready to use! (AD0:low)\n");
 		HAL_UART_Transmit(&huart2, str, size, 1000);
-		sensor0 = 1;		// Sensor 0 OK
+		sensor0 = 1;		// Sensor 0 OK	//RIGHT
   }
 
   // Initialize MPU6050 sensor 1, address = 0xD2, AD0 pin on sensor is high
@@ -255,17 +275,17 @@ int main(void)
 		// Display message to user
 		size = sprintf(str, "MPU6050 sensor 1 is ready to use! (AD0:high)\n");
 		HAL_UART_Transmit(&huart2, str, size, 1000);
-		sensor1 = 1;		// Sensor 1 OK
+		sensor1 = 1;		// Sensor 1 OK	//LEFT
   }
   //==================
 
   HAL_Delay(200);
   //Kalman filter init
   TM_MPU6050_ReadAll(&MPU6050_Data0);
-  kalman_filter_init(&K_MPU6050_0, MPU6050_Data0.Accelerometer_X, MPU6050_Data0.Accelerometer_Z);
+  kalman_filter_init(&K_MPU6050_0, MPU6050_Data0.Accelerometer_Y, MPU6050_Data0.Accelerometer_Z);
 
   TM_MPU6050_ReadAll(&MPU6050_Data1);
-  kalman_filter_init(&K_MPU6050_1, MPU6050_Data1.Accelerometer_X, MPU6050_Data1.Accelerometer_Z);
+  kalman_filter_init(&K_MPU6050_1, MPU6050_Data1.Accelerometer_Y, MPU6050_Data1.Accelerometer_Z);
 
 
   //Init cyclic timer (MPU, KALMAN, PID) - after Kalman init!
