@@ -8,8 +8,8 @@
 #define MPU6050_ACCE_SENS 8
 
 
-float dev_v = 5;
-float dev_w = 1;
+float dev_v = 6;
+float dev_w = 5;
 
 static float dt = 0.005;			//depend on timer interrupt time
 

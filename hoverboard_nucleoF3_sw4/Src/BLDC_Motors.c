@@ -17,21 +17,8 @@
 #define R_MOT_BACKWARD	HAL_GPIO_WritePin(RIGHT_MOTOR_PORT, RIGHT_MOTOR_DIR_Pin, GPIO_PIN_SET)
 
 
-enum directions {
-	BACKWARD = 0,
-	FORWARD,
-	LEFT,
-	RIGHT
-};
 
-enum motors_conf {
-	NONE_MOTOR = 0,
-	LEFT_MOTOR,
-	RIGHT_MOTOR,
-	BOTH_MOTORS
-};
-
-#define MOTOR_MIN_PWM		350
+#define MOTOR_MIN_PWM		100
 
 //PWM Range 0-1000
 static TIM_HandleTypeDef* BLDC_MotorsTimer;

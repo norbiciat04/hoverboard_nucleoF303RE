@@ -11,8 +11,19 @@
 #include "stm32f3xx_hal.h"
 #include "stdbool.h"
 
-//????
-//static const int32_t LED_POWER_RETAIN = -1;
+enum directions {
+	BACKWARD = 0,
+	FORWARD,
+	LEFT,
+	RIGHT
+};
+
+enum motors_conf {
+	NONE_MOTOR = 0,
+	LEFT_MOTOR,
+	RIGHT_MOTOR,
+	BOTH_MOTORS
+};
 
 void setPwmDuty(TIM_HandleTypeDef* timer, uint32_t channel, uint16_t duty);
 
