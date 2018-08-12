@@ -133,74 +133,81 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){	//cykliczne pomiary
 
 
 				TM_MPU6050_ReadAll(&MPU6050_Data0);	//RIGHT
+
 				sensor0_kalman_result = kalman_filter_get_est(&K_MPU6050_0, MPU6050_Data0.Accelerometer_Y, MPU6050_Data0.Accelerometer_Z, MPU6050_Data0.Gyroscope_X);
+
+				d0_kal_result = (int8_t) sensor0_kalman_result;	//for Uart
+
+				angle0_result = angle_before_kalman(MPU6050_Data0.Accelerometer_Y, MPU6050_Data0.Accelerometer_Z);
+				d0_angle_result = (int8_t) angle0_result;	//for Uart
+
+				pid0_result = PID_calculate(0,sensor0_kalman_result);
+				d0_pid_result = (int16_t) pid0_result;	//for Uart
+
+
 
 				TM_MPU6050_ReadAll(&MPU6050_Data1);	//LEFT
 				sensor1_kalman_result = -kalman_filter_get_est(&K_MPU6050_1, MPU6050_Data1.Accelerometer_Y, MPU6050_Data1.Accelerometer_Z, MPU6050_Data1.Gyroscope_X);
 
-				d0_kal_result = sensor0_kalman_result;	//for Uart
-				d1_kal_result = sensor1_kalman_result;	//for Uart
+				d1_kal_result = (int8_t) sensor1_kalman_result;	//for Uart
 
-				angle0_result = angle_before_kalman(MPU6050_Data0.Accelerometer_Y, MPU6050_Data0.Accelerometer_Z);
-				d0_angle_result = angle0_result;	//for Uart
 				angle1_result = -angle_before_kalman(MPU6050_Data1.Accelerometer_Y, MPU6050_Data1.Accelerometer_Z);
-				d1_angle_result = angle1_result;	//for Uart
+				d1_angle_result = (int8_t) angle1_result;	//for Uart
 
-
-				pid0_result = PID_calculate(0,sensor0_kalman_result);
-				d0_pid_result = pid0_result;	//for Uart
 				pid1_result = PID_calculate(0,sensor1_kalman_result);
-				d1_pid_result = pid1_result;	//for Uart
+				d1_pid_result = (int16_t) pid1_result;	//for Uart
 
 
 				size = sprintf(str, "%d %d %d      %d %d %d    %d %d\r\n", d0_pid_result, d0_angle_result, d0_kal_result, d1_pid_result, d1_angle_result, d1_kal_result, 100, -100);
 				HAL_UART_Transmit_IT(&huart2, str, size);
 
 
-				/*
+			//	sensor0_kalman_result = kalman_filter_get_est(&K_MPU6050_0, MPU6050_Data0.Accelerometer_Y, MPU6050_Data0.Accelerometer_Z, MPU6050_Data0.Gyroscope_X);
+
+
+
+/*
 				// Format data
-				size = sprintf(str, "Sensor0: Angle:%d   Kalman:%d   PID:%d   Acc: X:%d   Y:%d   Z:%d         Gyr: X:%d   Y:%d   Z:%d Systick %d \r\n",
-				d_angle_result,
-				d_kal_result,
-				d_pid_result,
+				size = sprintf(str, "Sensor0: Angle:%d   Kalman:%d   PID:%d   Acc: X:%d   Y:%d   Z:%d         Gyr: X:%d   Y:%d   Z:%d \r\n",
+				d0_angle_result,
+				d0_kal_result,
+				d0_pid_result,
 				MPU6050_Data0.Accelerometer_X,
 				MPU6050_Data0.Accelerometer_Y,
 				MPU6050_Data0.Accelerometer_Z,
 				MPU6050_Data0.Gyroscope_X,
 				MPU6050_Data0.Gyroscope_Y,
-				MPU6050_Data0.Gyroscope_Z,
-				HAL_GetTick()
+				MPU6050_Data0.Gyroscope_Z
 				);
-				*/
-				/*
-				size = sprintf(str, "%d  %d   %d %d      %d %d %d \r\n", sensor0, d_pid_result, d_angle_result, d_kal_result, 100, -100, interval);
+
+
+				size = sprintf(str, "%d  %d   %d %d      %d %d %d \r\n", sensor0, d0_pid_result, d0_angle_result, d0_kal_result, 100, -100, interval);
 				HAL_UART_Transmit_IT(&huart2, str, size);
-				*/
+
 
 
 				//-------------
 
 
 
-				/*
+
 				// Format data
-				size = sprintf(str, "Sensor1: Angle:%d   Kalman:%d   PID:%d   Acc: X:%d   Y:%d   Z:%d         Gyr: X:%d   Y:%d   Z:%d Systick %d \r\n",
-				d_angle_result,
-				d_kal_result,
-				d_pid_result,
+				size = sprintf(str, "Sensor1: Angle:%d   Kalman:%d   PID:%d   Acc: X:%d   Y:%d   Z:%d         Gyr: X:%d   Y:%d   Z:%d \r\n",
+				d1_angle_result,
+				d1_kal_result,
+				d1_pid_result,
 				MPU6050_Data1.Accelerometer_X,
 				MPU6050_Data1.Accelerometer_Y,
 				MPU6050_Data1.Accelerometer_Z,
 				MPU6050_Data1.Gyroscope_X,
 				MPU6050_Data1.Gyroscope_Y,
-				MPU6050_Data1.Gyroscope_Z,
-				HAL_GetTick()
+				MPU6050_Data1.Gyroscope_Z
 				);
-				*/
-				/*
-				size = sprintf(str, "%d  %d   %d %d      %d %d %d \r\n", sensor1, d_pid_result, d_angle_result, d_kal_result, 100, -100, interval);
+
+
+				size = sprintf(str, "%d  %d   %d %d      %d %d %d \r\n", sensor1, d1_pid_result, d1_angle_result, d1_kal_result, 100, -100, interval);
 				HAL_UART_Transmit_IT(&huart2, str, size);
-				*/
+*/
 
 		}
 
@@ -281,6 +288,7 @@ int main(void)
 
   HAL_Delay(200);
   //Kalman filter init
+
   TM_MPU6050_ReadAll(&MPU6050_Data0);
   kalman_filter_init(&K_MPU6050_0, MPU6050_Data0.Accelerometer_Y, MPU6050_Data0.Accelerometer_Z);
 
@@ -310,20 +318,59 @@ int main(void)
 	  HAL_UART_Transmit_IT(&huart2, str, size);
 	  */
 
-	  /*
+	//------------------------------------
+
+/*
+		TM_MPU6050_ReadAll(&MPU6050_Data0);	//RIGHT
+		sensor0_kalman_result = kalman_filter_get_est(&K_MPU6050_0, MPU6050_Data0.Accelerometer_Y, MPU6050_Data0.Accelerometer_Z, MPU6050_Data0.Gyroscope_X);
+
+		d0_kal_result = sensor0_kalman_result;	//for Uart
+
+		angle0_result = angle_before_kalman(MPU6050_Data0.Accelerometer_Y, MPU6050_Data0.Accelerometer_Z);
+		d0_angle_result = angle0_result;	//for Uart
+
+		pid0_result = PID_calculate(0,sensor0_kalman_result);
+		d0_pid_result = pid0_result;	//for Uart
+
+
+
+		TM_MPU6050_ReadAll(&MPU6050_Data1);	//LEFT
+		sensor1_kalman_result = -kalman_filter_get_est(&K_MPU6050_1, MPU6050_Data1.Accelerometer_Y, MPU6050_Data1.Accelerometer_Z, MPU6050_Data1.Gyroscope_X);
+
+		d1_kal_result = sensor1_kalman_result;	//for Uart
+
+		angle1_result = -angle_before_kalman(MPU6050_Data1.Accelerometer_Y, MPU6050_Data1.Accelerometer_Z);
+		d1_angle_result = angle1_result;	//for Uart
+
+		pid1_result = PID_calculate(0,sensor1_kalman_result);
+		d1_pid_result = pid1_result;	//for Uart
+
+
+		size = sprintf(str, "%d %d %d      %d %d %d    %d %d\r\n", d0_pid_result, d0_angle_result, d0_kal_result, d1_pid_result, d1_angle_result, d1_kal_result, MPU6050_Data0.Gyroscope_X, MPU6050_Data1.Gyroscope_X);
+		HAL_UART_Transmit_IT(&huart2, str, size);
+
+
+	  	  HAL_Delay(50);
+
+*/
+
+	//--------------------------------
+
+
+/*
       if (sensor0) {
            // Read all data from sensor 0
            TM_MPU6050_ReadAll(&MPU6050_Data0);
-           sensor0_kalman_result = kalman_filter_get_est(&K_MPU6050_0, MPU6050_Data0.Accelerometer_X, MPU6050_Data0.Accelerometer_Z, MPU6050_Data0.Gyroscope_Y);
- 	  	   d_kal_result = sensor0_kalman_result;	//for Uart
+           sensor0_kalman_result = kalman_filter_get_est(&K_MPU6050_0, MPU6050_Data0.Accelerometer_Y, MPU6050_Data0.Accelerometer_Z, MPU6050_Data0.Gyroscope_X);
+ 	  	   d0_kal_result = sensor0_kalman_result;	//for Uart
 
- 		   angle_result = angle_before_kalman(MPU6050_Data0.Accelerometer_X, MPU6050_Data0.Accelerometer_Z);
- 		   d_angle_result = angle_result;	//for Uart
+ 		   angle0_result = angle_before_kalman(MPU6050_Data0.Accelerometer_Y, MPU6050_Data0.Accelerometer_Z);
+ 		   d0_angle_result = angle0_result;	//for Uart
 
            // Format data
            size = sprintf(str, "Sensor0: Angle:%d   Kalman:%d      Acc: X:%d   Y:%d   Z:%d         Gyr: X:%d   Y:%d   Z:%d \r\n",
-        	   d_angle_result,
-			   d_kal_result,
+        	   d0_angle_result,
+			   d0_kal_result,
                MPU6050_Data0.Accelerometer_X,
                MPU6050_Data0.Accelerometer_Y,
                MPU6050_Data0.Accelerometer_Z,
@@ -336,22 +383,23 @@ int main(void)
            HAL_UART_Transmit(&huart2, str, size, 1000);
       }
 
+  	  HAL_Delay(500);
 
 
       if (sensor1) {
            // Read all data from sensor 1
            TM_MPU6050_ReadAll(&MPU6050_Data1);
-           sensor1_kalman_result = kalman_filter_get_est(&K_MPU6050_1, MPU6050_Data1.Accelerometer_X, MPU6050_Data1.Accelerometer_Z, MPU6050_Data1.Gyroscope_Y);
- 	  	   d_kal_result = sensor1_kalman_result;	//for Uart
+           sensor1_kalman_result = kalman_filter_get_est(&K_MPU6050_1, MPU6050_Data1.Accelerometer_Y, MPU6050_Data1.Accelerometer_Z, MPU6050_Data1.Gyroscope_X);
+ 	  	   d1_kal_result = sensor1_kalman_result;	//for Uart
 
- 		   angle_result = angle_before_kalman(MPU6050_Data1.Accelerometer_X, MPU6050_Data1.Accelerometer_Z);
- 		   d_angle_result = angle_result;	//for Uart
+ 		   angle1_result = angle_before_kalman(MPU6050_Data1.Accelerometer_Y, MPU6050_Data1.Accelerometer_Z);
+ 		   d1_angle_result = angle1_result;	//for Uart
 
            // Format data
 
            size = sprintf(str, "Sensor1: Angle:%d   Kalman:%d      Acc: X:%d   Y:%d   Z:%d         Gyr: X:%d   Y:%d   Z:%d \r\n",
-               d_angle_result,
-    	       d_kal_result,
+               d1_angle_result,
+    	       d1_kal_result,
                MPU6050_Data1.Accelerometer_X,
                MPU6050_Data1.Accelerometer_Y,
                MPU6050_Data1.Accelerometer_Z,
@@ -366,7 +414,7 @@ int main(void)
       }
 
 
-  	  HAL_Delay(5);
+  	  HAL_Delay(500);
 */
 
   }
@@ -647,7 +695,7 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin : BUTTON_START_Pin */
   GPIO_InitStruct.Pin = BUTTON_START_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(BUTTON_START_GPIO_Port, &GPIO_InitStruct);
 
 }

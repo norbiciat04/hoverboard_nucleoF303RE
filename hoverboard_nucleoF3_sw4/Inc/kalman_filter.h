@@ -3,7 +3,7 @@
 
 
 
-struct KALMAN_OBJ {
+typedef struct KALMAN_OBJ {
 
 	float x_post[2];
 
@@ -24,13 +24,14 @@ struct KALMAN_OBJ {
 	float PCT[2], S1[1];
 	float Keps[2];
 	float KS[2], KSKT[2];
-} K_MPU6050_0,  K_MPU6050_1;
 
+}KALMAN_OBJ;
 
+KALMAN_OBJ K_MPU6050_0, K_MPU6050_5, K_MPU6050_6, K_MPU6050_1;
 
-void kalman_filter_init(struct KALMAN_OBJ* sensor, float acc_1, float acc_2);
+void kalman_filter_init(KALMAN_OBJ* sensor, float acc_1, float acc_2);
 
 float angle_before_kalman(float acc_1, float acc_2);
-float kalman_filter_get_est(struct KALMAN_OBJ* sensor, float acc_1, float acc_2, float gyro);
+float kalman_filter_get_est(KALMAN_OBJ* sensor, float acc_1, float acc_2, float gyro);
 
 #endif /* KALMAN_FILTER_H_ */
